@@ -57,15 +57,6 @@ def train():
 
     ## If your machine have enough memory, please pre-load the whole train set.
     train_hr_imgs = read_all_imgs(train_hr_img_list, path=config.TRAIN.hr_img_path, n_threads=32)
-    # for im in train_hr_imgs:
-    #     print(im.shape)
-    # valid_lr_imgs = read_all_imgs(valid_lr_img_list, path=config.VALID.lr_img_path, n_threads=32)
-    # for im in valid_lr_imgs:
-    #     print(im.shape)
-    # valid_hr_imgs = read_all_imgs(valid_hr_img_list, path=config.VALID.hr_img_path, n_threads=32)
-    # for im in valid_hr_imgs:
-    #     print(im.shape)
-    # exit()
 
     ###========================== DEFINE MODEL ============================###
     ## train inference
@@ -75,7 +66,6 @@ def train():
     noise_std=args.noise
     #net_g = SRGAN_g(t_image, is_train=True, reuse=False)
     net_g0= SRGAN_g0(t_image,[],noise_std,is_variance=False,is_train=True, reuse=False)
-    #pdb.set_trace()
     net_d, logits_real = SRGAN_d(t_target_image, is_train=True, reuse=False)
     _,     logits_fake = SRGAN_d(net_g0.outputs, is_train=True, reuse=True)
 
@@ -133,7 +123,6 @@ def train():
         lr_v = tf.Variable(lr_init, trainable=False)
     ## Pretrain
     g_optim_init = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(mse_loss, var_list=g_vars)
-    ## SRGAN
     g_optim = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(g_loss, var_list=g_vars)
     d_optim = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(d_loss, var_list=d_vars)
 
@@ -141,7 +130,6 @@ def train():
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
     tl.layers.initialize_global_variables(sess)
     tl.files.load_and_assign_npz(sess=sess, name=checkpoint_dir+'/g_{}.npz'.format(tl.global_flag['mode']), network=net_g0)
-    #tl.files.load_and_assign_npz(sess=sess, name=checkpoint_dir+'/g_{}_init.npz'.format(tl.global_flag['mode']), network=net_g)
     tl.files.load_and_assign_npz(sess=sess, name=checkpoint_dir+'/d_{}.npz'.format(tl.global_flag['mode']), network=net_d)
 
     ###============================= LOAD VGG ===============================###
@@ -164,7 +152,6 @@ def train():
     ###============================= TRAINING ===============================###
     ## use first `batch_size` of train set to have a quick test during training
     sample_imgs = train_hr_imgs[0:batch_size]
-    # sample_imgs = read_all_imgs(train_hr_img_list[0:batch_size], path=config.TRAIN.hr_img_path, n_threads=32) # if no pre-load train set
     sample_imgs_384 = tl.prepro.threading_data(sample_imgs, fn=crop_sub_imgs_fn, is_random=False)
     print('sample HR sub-image:',sample_imgs_384.shape, sample_imgs_384.min(), sample_imgs_384.max())
     sample_imgs_96 = tl.prepro.threading_data(sample_imgs_384, fn=downsample_fn)
@@ -173,50 +160,7 @@ def train():
     tl.vis.save_images(sample_imgs_384, [ni, ni], save_dir_ginit+'/_train_sample_384.png')
     tl.vis.save_images(sample_imgs_96, [ni, ni], save_dir_gan+'/_train_sample_96.png')
     tl.vis.save_images(sample_imgs_384, [ni, ni], save_dir_gan+'/_train_sample_384.png')
-    '''
-    ###========================= initialize G ====================###
-    ## fixed learning rate
-    sess.run(tf.assign(lr_v, lr_init))
-    print(" ** fixed learning rate: %f (for init G)" % lr_init)
-    for epoch in range(0, n_epoch_init+1):
-        epoch_time = time.time()
-        total_mse_loss, n_iter = 0, 0
 
-        ## If your machine cannot load all images into memory, you should use
-        ## this one to load batch of images while training.
-        # random.shuffle(train_hr_img_list)
-        # for idx in range(0, len(train_hr_img_list), batch_size):
-        #     step_time = time.time()
-        #     b_imgs_list = train_hr_img_list[idx : idx + batch_size]
-        #     b_imgs = tl.prepro.threading_data(b_imgs_list, fn=get_imgs_fn, path=config.TRAIN.hr_img_path)
-        #     b_imgs_384 = tl.prepro.threading_data(b_imgs, fn=crop_sub_imgs_fn, is_random=True)
-        #     b_imgs_96 = tl.prepro.threading_data(b_imgs_384, fn=downsample_fn)
-
-        ## If your machine have enough memory, please pre-load the whole train set.
-        for idx in range(0, len(train_hr_imgs), batch_size):
-            step_time = time.time()
-            b_imgs_384 = tl.prepro.threading_data(
-                    train_hr_imgs[idx : idx + batch_size],
-                    fn=crop_sub_imgs_fn, is_random=True)
-            b_imgs_96 = tl.prepro.threading_data(b_imgs_384, fn=downsample_fn)
-            ## update G
-            errM, _ = sess.run([mse_loss, g_optim_init], {t_image: b_imgs_96, t_target_image: b_imgs_384})
-            print("Epoch [%2d/%2d] %4d time: %4.4fs, mse: %.8f " % (epoch, n_epoch_init, n_iter, time.time() - step_time, errM))
-            total_mse_loss += errM
-            n_iter += 1
-        log = "[*] Epoch: [%2d/%2d] time: %4.4fs, mse: %.8f" % (epoch, n_epoch_init, time.time() - epoch_time, total_mse_loss/n_iter)
-        print(log)
-
-        ## quick evaluation on train set
-        if (epoch != 0) and (epoch % 10 == 0):
-            out = sess.run(net_g_test.outputs, {t_image: sample_imgs_96})#; print('gen sub-image:', out.shape, out.min(), out.max())
-            print("[*] save images")
-            tl.vis.save_images(out, [ni, ni], save_dir_ginit+'/train_%d.png' % epoch)
-
-        ## save model
-        if (epoch != 0) and (epoch % 10 == 0):
-            tl.files.save_npz(net_g.all_params, name=checkpoint_dir+'/g_{}_init.npz'.format(tl.global_flag['mode']), sess=sess)
-    '''
     ###========================= train GAN (SRGAN) =========================###
     for epoch in range(0, n_epoch+1):
         ## update learning rate
@@ -232,16 +176,6 @@ def train():
 
         epoch_time = time.time()
         total_d_loss, total_g_loss, n_iter = 0, 0, 0
-
-        ## If your machine cannot load all images into memory, you should use
-        ## this one to load batch of images while training.
-        # random.shuffle(train_hr_img_list)
-        # for idx in range(0, len(train_hr_img_list), batch_size):
-        #     step_time = time.time()
-        #     b_imgs_list = train_hr_img_list[idx : idx + batch_size]
-        #     b_imgs = tl.prepro.threading_data(b_imgs_list, fn=get_imgs_fn, path=config.TRAIN.hr_img_path)
-        #     b_imgs_384 = tl.prepro.threading_data(b_imgs, fn=crop_sub_imgs_fn, is_random=True)
-        #     b_imgs_96 = tl.prepro.threading_data(b_imgs_384, fn=downsample_fn)
 
         ## If your machine have enough memory, please pre-load the whole train set.
         for idx in range(0, len(train_hr_imgs), batch_size):
@@ -282,75 +216,29 @@ def evaluate():
     checkpoint_dir = "checkpoint"
 
     ###====================== PRE-LOAD DATA ===========================###
-    # train_hr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.hr_img_path, regx='.*.png', printable=False))
-    # train_lr_img_list = sorted(tl.files.load_file_list(path=config.TRAIN.lr_img_path, regx='.*.png', printable=False))
     valid_hr_img_list = sorted(tl.files.load_file_list(path=config.VALID.hr_img_path, regx='.*.png', printable=False))
     valid_lr_img_list = sorted(tl.files.load_file_list(path=config.VALID.lr_img_path, regx='.*.png', printable=False))
-    #valid_variance_list = sorted(tl.files.load_file_list(path=config.VALID.variance_path, regx='.*.jpg', printable=False))
-    ## If your machine have enough memory, please pre-load the whole train set.
-    # train_hr_imgs = read_all_imgs(train_hr_img_list, path=config.TRAIN.hr_img_path, n_threads=32)
-    # for im in train_hr_imgs:
-    #     print(im.shape)
     valid_lr_imgs_o = read_all_imgs(valid_lr_img_list, path=config.VALID.lr_img_path, n_threads=32)
-    # for im in valid_lr_imgs:
-    #     print(im.shape)
     valid_hr_imgs_o = read_all_imgs(valid_hr_img_list, path=config.VALID.hr_img_path, n_threads=32)
-    #valid_variance_imgs = read_all_imgs(valid_variance_list, path=config.VALID.variance_path, n_threads=32)
-    # for im in valid_hr_imgs:
-    #     print(im.shape)
-    # exit()
     
     i=0
     std=args.noise
-    #
-    
-    #list_imid=[0,3,9,25,54,59]
-    for imid_i in range(1):
+
+    for imid_i in range(14):
         imid=args.image_id
-        #for imid in range(20):
-        ###========================== DEFINE MODEL ============================###
-        #imid = 10 # 0: 企鹅  81: 蝴蝶 53: 鸟  64: 古堡
-        #imid =0
-        for rotate_time in range(1):
+        for rotate_time in range(4):
             i+=1
             print (rotate_time)
             valid_lr_img = np.rot90(valid_lr_imgs_o[imid],rotate_time)
             valid_hr_img = np.rot90(valid_hr_imgs_o[imid],rotate_time)
-            #valid_variance_img = np.rot90(valid_variance_imgs[imid],rotate_time)
-            # valid_lr_img = get_imgs_fn('test.png', 'data2017/')  # if you want to test your own image
             valid_lr_img = (valid_lr_img / 127.5) - 1   # rescale to ［－1, 1]
-            # print(valid_lr_img.min(), valid_lr_img.max())
             size = valid_lr_img.shape
             t_image = tf.placeholder('float32', [None, size[0], size[1], size[2]], name='input_image')
-            #pdb.set_trace()
-            #mean = tf.placeholder('float32', [0], name='mean')
-            #std = tf.placeholder('float32', [0], name='std')
             if i>1:
-                #net_g = SRGAN_g(t_image, is_train=False, reuse=True)
-                net_g = SRGAN_g(t_image,[],std,is_variance=False,is_train=False, reuse=True)
-                '''
-                _,g_out2 = SRGAN_g(tf.image.rot90(t_image,1),[],is_variance=False,is_train=False, reuse=True)
-                _,g_out3 = SRGAN_g(tf.image.rot90(t_image,2),[],is_variance=False,is_train=False, reuse=True)
-                _,g_out4 = SRGAN_g(tf.image.rot90(t_image,3),[],is_variance=False,is_train=False, reuse=True)
-    
-                cat_g_output=tf.stack([g_out1[:,:,:,2],tf.image.rot90(g_out2,3)[:,:,:,2],tf.image.rot90(g_out3,2)[:,:,:,2],tf.image.rot90(g_out4,1)[:,:,:,2]])
-                mean, var = tf.nn.moments(cat_g_output, axes=[0])
-                var_unsqueeze=tf.expand_dims(var, -1)
-                '''
+                net_g = SRGAN_g(t_image,[],std, is_variance=False, is_train=False, reuse=True)
             else:
-                
-                net_g0 = SRGAN_g0(t_image,[],std,is_variance=False,is_train=False, reuse=False)
-                net_g = SRGAN_g(t_image,[],std,is_variance=False,is_train=False, reuse=True)
-                '''
-                net_g, g_out1 = SRGAN_g(t_image,[],is_variance=False,is_train=False, reuse=True)
-                _,g_out2 = SRGAN_g(tf.image.rot90(t_image,1),[],is_variance=False,is_train=False, reuse=True)
-                _,g_out3 = SRGAN_g(tf.image.rot90(t_image,2),[],is_variance=False,is_train=False, reuse=True)
-                _,g_out4 = SRGAN_g(tf.image.rot90(t_image,3),[],is_variance=False,is_train=False, reuse=True)
-                
-                cat_g_output=tf.stack([g_out1[:,:,:,2],tf.image.rot90(g_out2,3)[:,:,:,2],tf.image.rot90(g_out3,2)[:,:,:,2],tf.image.rot90(g_out4,1)[:,:,:,2]])
-                mean, var = tf.nn.moments(cat_g_output, axes=[0])
-                var_unsqueeze=tf.expand_dims(var, -1)
-                '''
+                net_g0 = SRGAN_g0(t_image, [], std, is_variance=False, is_train=False, reuse=False)
+                net_g = SRGAN_g(t_image, [], std, is_variance=False, is_train=False, reuse=True)
             ###========================== RESTORE G =============================###
             sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
             
@@ -359,32 +247,9 @@ def evaluate():
             ###======================= EVALUATION =============================###
             
             start_time = time.time()
-            #pdb.set_trace()
             for it in range(args.sample_times):
                 out = sess.run(net_g.outputs, {t_image: [valid_lr_img]})
                 tl.vis.save_image(np.rot90(out[0],4-rotate_time), save_dir+'/valid_gen_id_%02d_r%d_noise_%d_r%02d.png' % (imid,rotate_time,args.noise,it))
-                #out = sess.run(net_g.outputs, {t_image: [valid_lr_img]})
-                #tl.vis.save_image(np.rot90(out[0],4-rotate_time), save_dir+'/valid_gen_id_%02d_r%d_noise_%d_r1.png' % (imid,rotate_time,args.noise))
-                #out = sess.run(net_g.outputs, {t_image: [valid_lr_img]})
-                #tl.vis.save_image(np.rot90(out[0],4-rotate_time), save_dir+'/valid_gen_id_%02d_r%d_noise_%d_r2.png' % (imid,rotate_time,args.noise))
-                #out = sess.run(net_g.outputs, {t_image: [valid_lr_img]})
-                #tl.vis.save_image(np.rot90(out[0],4-rotate_time), save_dir+'/valid_gen_id_%02d_r%d_noise_%d_r3.png' % (imid,rotate_time,args.noise))
-            
-            #no noise
-            #out0 = sess.run(net_g0.outputs, {t_image: [valid_lr_img]})
-            #tl.vis.save_image(np.rot90(out0[0],4-rotate_time), save_dir+'/valid_gen_id_%02d_r%d_r0.png' % (imid,rotate_time))
-            #print("took: %4.4fs" % (time.time() - start_time))
-
-            #print("LR size: %s /  generated HR size: %s" % (size, out.shape))
-            # LR size: (339, 510, 3) /  gen HR size: (1, 1356, 2040, 3)
-            #print("[*] save images")
-            
-            #tl.vis.save_image(np.rot90(valid_lr_img,4-rotate_time), save_dir+'/valid_lr_id_%02d_r%d.png' % (imid,rotate_time))
-            #tl.vis.save_image(np.rot90(valid_hr_img,4-rotate_time), save_dir+'/valid_hr_id_%02d_r%d.png' % (imid,rotate_time))
-
-            #out_bicu = scipy.misc.imresize(valid_lr_img, [size[0]*4, size[1]*4], interp='bicubic', mode=None)
-            #tl.vis.save_image(np.rot90(out_bicu,4-rotate_time), save_dir+'/valid_bicubic_id_%02d_r%d.png' % (imid,rotate_time))
-
 
 if __name__ == '__main__':
     import argparse
@@ -400,16 +265,16 @@ if __name__ == '__main__':
     
     
     args = parser.parse_args()
-    if args.layer ==4:
-        from model_noise_last4 import *
+    if args.layer ==1:
+        from model_noise_last1 import *
     elif args.layer ==2:
         from model_noise_last2 import *
+    elif args.layer ==4:
+        from model_noise_last4 import *
     elif args.layer ==8:
         from model_noise_last8 import *
-    elif args.layer ==9:
-        from model_noise_last9 import *
     else:
-        from model_noise_last1 import *
+        from model_noise_last9 import *
 
     tl.global_flag['mode'] = args.mode
 
