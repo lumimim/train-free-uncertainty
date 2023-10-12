@@ -35,7 +35,6 @@ def read_all_imgs(img_list, path='', n_threads=32):
     for idx in range(0, len(img_list), n_threads):
         b_imgs_list = img_list[idx : idx + n_threads]
         b_imgs = tl.prepro.threading_data(b_imgs_list, fn=get_imgs_fn, path=path)
-        # print(b_imgs.shape)
         imgs.extend(b_imgs)
         print('read %d from %s' % (len(imgs), path))
     return imgs
@@ -64,7 +63,6 @@ def train():
     t_target_image = tf.placeholder('float32', [batch_size, 384, 384, 3], name='t_target_image')
 
     noise_std=args.noise
-    #net_g = SRGAN_g(t_image, is_train=True, reuse=False)
     net_g0= SRGAN_g0(t_image,[],noise_std,is_variance=False,is_train=True, reuse=False)
     net_d, logits_real = SRGAN_d(t_target_image, is_train=True, reuse=False)
     _,     logits_fake = SRGAN_d(net_g0.outputs, is_train=True, reuse=True)
@@ -78,8 +76,6 @@ def train():
 
     net_vgg, vgg_target_emb = Vgg19_simple_api((t_target_image_224+1)/2, reuse=False)
     _, vgg_predict_emb = Vgg19_simple_api((t_predict_image_224+1)/2, reuse=True)
-    # print(vgg_predict_emb.outputs)
-    # # exit()
 
     ## test inference
     net_g_test0 = SRGAN_g0(t_image,[],noise_std,is_variance=False,is_train=False, reuse=True)
@@ -90,31 +86,11 @@ def train():
     d_loss2 = tl.cost.sigmoid_cross_entropy(logits_fake, tf.zeros_like(logits_fake), name='d2')
     d_loss = d_loss1 + d_loss2
 
-    # g_gan_loss = 1e-1 * tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_fake), name='g')
-    # mse_loss = normalize_mean_squared_error(net_g.outputs, t_target_image)                                            # simiao
-    # vgg_loss = 5e-1 * normalize_mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs)
-
     g_gan_loss = 1e-3 * tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_fake), name='g')                 # paper 1e-3
     mse_loss = tl.cost.mean_squared_error(net_g0.outputs , t_target_image, is_mean=True)                                 # paper
     vgg_loss = 2e-6 * tl.cost.mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs, is_mean=True)    # simiao
 
-    ## simiao
-    # g_gan_loss = tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_fake), name='g')
-    # mse_loss = normalize_mean_squared_error(net_g.outputs, t_target_image)
-    # vgg_loss = 0.00025 * tl.cost.mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs, is_mean=True)
-
-    ## history
-    # resize-conv MSE + 1e-2*g_gan_loss: 1020 green broken, but can recover/ 1030 always green
-    # resize-conv MSE + 1e-3*g_gan_loss: more stable than 1e-2, 1043 bubble
-    # resize-conv MSE + 1e-3*g_gan_loss +1e-6*VGG 相比 mse+gan, bubble少了很多，d loss ≈ 0.5 (G not powerful?)
-    # subpixel-conv MSE + 1e-3*g_gan_loss +1e-6*VGG (no pretrain), small checkboard. VGG loss ≈ MSE / 2
-    # train higher VGG loss?
-    # subpixel-conv MSE + 1e-3*g_gan_loss +2e-6*VGG (no pretrain), small checkboard. VGG loss ≈ MSE
-    # subpixel-conv MSE + 1e-4*g_gan_loss +2e-6*VGG (no pretrain), small checkboard. 50epoch d loss very small ≈ 0.02054373
-    # subpixel-conv MSE + 1e-3*g_gan_loss +2e-6*VGG, 100 epoch pretrain, bare checkboard!
-
     g_loss = mse_loss + vgg_loss + g_gan_loss
-    # g_loss = mse_loss + g_gan_loss
 
     g_vars = tl.layers.get_variables_with_name('SRGAN_g', True, True)
     d_vars = tl.layers.get_variables_with_name('SRGAN_d', True, True)
@@ -146,8 +122,6 @@ def train():
         print("  Loading %s: %s, %s" % (val[0], W.shape, b.shape))
         params.extend([W, b])
     tl.files.assign_params(sess, params, net_vgg)
-    # net_vgg.print_params(False)
-    # net_vgg.print_layers()
 
     ###============================= TRAINING ===============================###
     ## use first `batch_size` of train set to have a quick test during training
@@ -224,9 +198,9 @@ def evaluate():
     i=0
     std=args.noise
 
-    for imid_i in range(14):
+    for imid_i in range(1):
         imid=args.image_id
-        for rotate_time in range(4):
+        for rotate_time in range(1):
             i+=1
             print (rotate_time)
             valid_lr_img = np.rot90(valid_lr_imgs_o[imid],rotate_time)
@@ -261,8 +235,6 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default='DIVI2K', help='validation dataset')
     parser.add_argument('--image_id', type=int, default=0, help='image id')
     parser.add_argument('--sample_times', type=int, default=32, help='sample times')
-    
-    
     
     args = parser.parse_args()
     if args.layer ==1:
