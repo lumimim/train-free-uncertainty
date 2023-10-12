@@ -209,14 +209,11 @@ def evaluate():
             size = valid_lr_img.shape
             t_image = tf.placeholder('float32', [None, size[0], size[1], size[2]], name='input_image')
             keep_prob = args.drop_out_keep
-            #pdb.set_trace
             if i>1:
-
-                net_g = SRGAN_g(t_image,keep_prob,[],noise_sdv,is_variance=False,is_train=False, reuse=True)
+                net_g = SRGAN_g(t_image, keep_prob, [], noise_sdv, is_variance=False, is_train=False, reuse=True)
             else:
-                
-                net_g0 = SRGAN_g0(t_image,[],noise_sdv,is_variance=False,is_train=False, reuse=False)
-                net_g = SRGAN_g(t_image,keep_prob,[],noise_sdv,is_variance=False,is_train=False, reuse=True)
+                net_g0 = SRGAN_g0(t_image, [], noise_sdv, is_variance=False, is_train=False, reuse=False)
+                net_g = SRGAN_g(t_image, keep_prob, [], noise_sdv, is_variance=False, is_train=False, reuse=True)
             ###========================== RESTORE G =============================###
             sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False))
             
@@ -230,7 +227,6 @@ def evaluate():
                 
                 feed_dict={t_image: [valid_lr_img]}
                 out = sess.run(net_g.outputs,feed_dict=feed_dict)
-                #pdb.set_trace()
                 tl.vis.save_image(np.rot90(out[0],4-rotate_time), save_dir+'/valid_gen_id_%02d_r%d_dropout_%0.2f_r%02d.png' % (imid,rotate_time,1-keep_prob,si))
             
             out0 = sess.run(net_g0.outputs, {t_image: [valid_lr_img]})
