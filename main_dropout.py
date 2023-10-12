@@ -59,9 +59,7 @@ def train():
     t_image = tf.placeholder('float32', [batch_size, 96, 96, 3], name='t_image_input_to_SRGAN_generator')
     t_target_image = tf.placeholder('float32', [batch_size, 384, 384, 3], name='t_target_image')
     noise_sdv=args.noise
-    #net_g = SRGAN_g(t_image, is_train=True, reuse=False)
     net_g0= SRGAN_g0(t_image,[],noise_sdv,is_variance=False,is_train=True, reuse=False)
-    #pdb.set_trace()
     net_d, logits_real = SRGAN_d(t_target_image, is_train=True, reuse=False)
     _,     logits_fake = SRGAN_d(net_g0.outputs, is_train=True, reuse=True)
 
