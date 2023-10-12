@@ -237,7 +237,7 @@ if __name__ == '__main__':
     parser.add_argument('--sample_times', type=int, default=32, help='sample times')
     
     args = parser.parse_args()
-    from models.model_noise_last1 import *
+    from models.model_noise import *
 
     tl.global_flag['mode'] = args.mode
 
