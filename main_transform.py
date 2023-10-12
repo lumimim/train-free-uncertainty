@@ -251,7 +251,7 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
-    from models.model import *
+    from models.model_transform import *
 
     tl.global_flag['mode'] = args.mode
 
