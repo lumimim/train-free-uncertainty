@@ -237,16 +237,7 @@ if __name__ == '__main__':
     parser.add_argument('--sample_times', type=int, default=32, help='sample times')
     
     args = parser.parse_args()
-    if args.layer ==1:
-        from models.model_noise_last1 import *
-    elif args.layer ==2:
-        from models.model_noise_last2 import *
-    elif args.layer ==4:
-        from models.model_noise_last4 import *
-    elif args.layer ==8:
-        from models.model_noise_last8 import *
-    else:
-        from models.model_noise_last9 import *
+    from models.model_noise_last1 import *
 
     tl.global_flag['mode'] = args.mode
 
