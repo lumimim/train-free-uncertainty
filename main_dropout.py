@@ -251,7 +251,7 @@ if __name__ == '__main__':
     parser.add_argument('--drop_out_keep', type=float, default=0.5, help='sample numbers')
     args = parser.parse_args()
     
-    from models.model_dropout_last1 import *
+    from models.model_dropout import *
     tl.global_flag['mode'] = args.mode
 
     if tl.global_flag['mode'] == 'srgan':
