@@ -31,8 +31,6 @@ decay_every = config.TRAIN.decay_every
 
 ni = int(np.sqrt(batch_size))
 
-
-
 def read_all_imgs(img_list, path='', n_threads=32):
     """ Returns all images in array by given path and name of each image file. """
     imgs = []
@@ -61,15 +59,6 @@ def train():
 
     ## If your machine have enough memory, please pre-load the whole train set.
     train_hr_imgs = read_all_imgs(train_hr_img_list, path=config.TRAIN.hr_img_path, n_threads=32)
-    # for im in train_hr_imgs:
-    #     print(im.shape)
-    # valid_lr_imgs = read_all_imgs(valid_lr_img_list, path=config.VALID.lr_img_path, n_threads=32)
-    # for im in valid_lr_imgs:
-    #     print(im.shape)
-    # valid_hr_imgs = read_all_imgs(valid_hr_img_list, path=config.VALID.hr_img_path, n_threads=32)
-    # for im in valid_hr_imgs:
-    #     print(im.shape)
-    # exit()
 
     ###========================== DEFINE MODEL ============================###
     ## train inference
@@ -104,31 +93,10 @@ def train():
     d_loss2 = tl.cost.sigmoid_cross_entropy(logits_fake, tf.zeros_like(logits_fake), name='d2')
     d_loss = d_loss1 + d_loss2
 
-    # g_gan_loss = 1e-1 * tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_fake), name='g')
-    # mse_loss = normalize_mean_squared_error(net_g.outputs, t_target_image)                                            # simiao
-    # vgg_loss = 5e-1 * normalize_mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs)
-
     g_gan_loss = 1e-3 * tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_fake), name='g')                 # paper 1e-3
     mse_loss = tl.cost.mean_squared_error(net_g0.outputs , t_target_image, is_mean=True)                                 # paper
     vgg_loss = 2e-6 * tl.cost.mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs, is_mean=True)    # simiao
-
-    ## simiao
-    # g_gan_loss = tl.cost.sigmoid_cross_entropy(logits_fake, tf.ones_like(logits_fake), name='g')
-    # mse_loss = normalize_mean_squared_error(net_g.outputs, t_target_image)
-    # vgg_loss = 0.00025 * tl.cost.mean_squared_error(vgg_predict_emb.outputs, vgg_target_emb.outputs, is_mean=True)
-
-    ## history
-    # resize-conv MSE + 1e-2*g_gan_loss: 1020 green broken, but can recover/ 1030 always green
-    # resize-conv MSE + 1e-3*g_gan_loss: more stable than 1e-2, 1043 bubble
-    # resize-conv MSE + 1e-3*g_gan_loss +1e-6*VGG 相比 mse+gan, bubble少了很多，d loss ≈ 0.5 (G not powerful?)
-    # subpixel-conv MSE + 1e-3*g_gan_loss +1e-6*VGG (no pretrain), small checkboard. VGG loss ≈ MSE / 2
-    # train higher VGG loss?
-    # subpixel-conv MSE + 1e-3*g_gan_loss +2e-6*VGG (no pretrain), small checkboard. VGG loss ≈ MSE
-    # subpixel-conv MSE + 1e-4*g_gan_loss +2e-6*VGG (no pretrain), small checkboard. 50epoch d loss very small ≈ 0.02054373
-    # subpixel-conv MSE + 1e-3*g_gan_loss +2e-6*VGG, 100 epoch pretrain, bare checkboard!
-
     g_loss = mse_loss + vgg_loss + g_gan_loss
-    # g_loss = mse_loss + g_gan_loss
 
     g_vars = tl.layers.get_variables_with_name('SRGAN_g', True, True)
     d_vars = tl.layers.get_variables_with_name('SRGAN_d', True, True)
