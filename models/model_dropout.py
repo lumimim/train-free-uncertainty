@@ -95,7 +95,7 @@ def SRGAN_g(t_image,keep_prob,variance,std,is_variance=False, is_train=False, re
     feature maps (n) and stride (s) feature maps (n) and stride (s)
     """
     w_init = tf.random_normal_initializer(stddev=0.02)
-    b_init = None # tf.constant_initializer(value=0.0)
+    b_init = None
     g_init = tf.random_normal_initializer(1., 0.02)
     with tf.variable_scope("SRGAN_g", reuse=reuse) as vs:
         tl.layers.set_name_reuse(reuse)
@@ -158,7 +158,6 @@ def SRGAN_g0(t_image,keep_prob,variance,std,is_variance=False, is_train=False, r
         n = Conv2d(n, 256, (3, 3), (1, 1), act=None, padding='SAME', W_init=w_init, name='n256s1/2')
         n = SubpixelConv2d(n, scale=2, n_out_channel=None, act=tf.nn.relu, name='pixelshufflerx2/2')
         n = test_DropoutLayer(n, keep = keep_prob)
-        n = DropoutLayer(n, keep=0.9, name='vgg_out/drop1')
         n = Conv2d(n, 3, (1, 1), (1, 1), act=tf.nn.tanh, padding='SAME', W_init=w_init, name='out')
         return n
 
