@@ -32,7 +32,6 @@ def read_all_imgs(img_list, path='', n_threads=32):
     for idx in range(0, len(img_list), n_threads):
         b_imgs_list = img_list[idx : idx + n_threads]
         b_imgs = tl.prepro.threading_data(b_imgs_list, fn=get_imgs_fn, path=path)
-        # print(b_imgs.shape)
         imgs.extend(b_imgs)
         print('read %d from %s' % (len(imgs), path))
     return imgs
@@ -125,13 +124,10 @@ def train():
         print("  Loading %s: %s, %s" % (val[0], W.shape, b.shape))
         params.extend([W, b])
     tl.files.assign_params(sess, params, net_vgg)
-    # net_vgg.print_params(False)
-    # net_vgg.print_layers()
 
     ###============================= TRAINING ===============================###
     ## use first `batch_size` of train set to have a quick test during training
     sample_imgs = train_hr_imgs[0:batch_size]
-    # sample_imgs = read_all_imgs(train_hr_img_list[0:batch_size], path=config.TRAIN.hr_img_path, n_threads=32) # if no pre-load train set
     sample_imgs_384 = tl.prepro.threading_data(sample_imgs, fn=crop_sub_imgs_fn, is_random=False)
     print('sample HR sub-image:',sample_imgs_384.shape, sample_imgs_384.min(), sample_imgs_384.max())
     sample_imgs_96 = tl.prepro.threading_data(sample_imgs_384, fn=downsample_fn)
